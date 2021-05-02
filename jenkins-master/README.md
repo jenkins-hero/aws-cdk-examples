@@ -1,6 +1,29 @@
 # jenkins-master with CDK
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+Sample Jenkins implementation in CDK, including:
+
+* VPC, subnets, load balancer, and other network setup
+* Jenkins deployment to Elastic Container Service Fargate
+* single master, with automatic failover to 2nd availability zone
+* persistent storage with EFS
+* secure access over HTTPS, with optional registration into a hosted zone
+
+## Deploying
+
+Ensure you have the following environment variables set:
+* `CDK_DEFAULT_ACCOUNT=<your-aws-account-id>`
+* `CDK_DEFAULT_REGION=<aws-region>`
+
+Decide what values (if any) you want to pass for these optional context parameters.
+
+* **certificateArn** is the ARN of a Certificate Manager certificate to be attached to the load balancer listener.
+  If this isn't provided you won't be able to access your Jenkins instance.
+* **hostedZoneName** is the name of a Route 53 hosted zone into which a `jenkins` CNAME record will be added e.g. set
+to `tomgregory.com` to register a CNAME record `jenkins.tomgregory.com` pointing at the load balancer DNS record
+
+Then run this command:
+
+`cdk deploy --context certificateArn=<certificate-arn> --context hostedZoneName=<hosted-zone-name>`
 
 ## Useful commands
 
