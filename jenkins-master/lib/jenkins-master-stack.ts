@@ -1,7 +1,9 @@
 import * as cdk from '@aws-cdk/core';
-import {Duration} from '@aws-cdk/core';
+import {Duration, RemovalPolicy} from '@aws-cdk/core';
 import * as ecs from '@aws-cdk/aws-ecs';
 import * as ec2 from '@aws-cdk/aws-ec2';
+import {Port} from '@aws-cdk/aws-ec2';
+import * as efs from '@aws-cdk/aws-efs';
 import * as elbv2 from '@aws-cdk/aws-elasticloadbalancingv2';
 import * as route53 from '@aws-cdk/aws-route53';
 import {HostedZone} from '@aws-cdk/aws-route53';
@@ -19,18 +21,53 @@ export class JenkinsMasterStack extends cdk.Stack {
             clusterName: 'jenkins-cluster'
         });
 
+        const fileSystem = new efs.FileSystem(this, 'JenkinsFileSystem', {
+            vpc: vpc,
+            removalPolicy: RemovalPolicy.DESTROY
+        });
+
+        const accessPoint = fileSystem.addAccessPoint('AccessPoint', {
+            path: '/jenkins-home',
+            posixUser: {
+                uid: '1000',
+                gid: '1000',
+            },
+            createAcl: {
+                ownerGid: '1000',
+                ownerUid: '1000',
+                permissions: '755'
+            }
+        });
+
         const taskDefinition = new ecs.FargateTaskDefinition(this, 'jenkins-task-definition', {
             memoryLimitMiB: 1024,
             cpu: 512,
             family: 'jenkins'
         });
 
-        taskDefinition.addContainer('jenkins', {
+        taskDefinition.addVolume({
+            name: 'jenkins-home',
+            efsVolumeConfiguration: {
+                fileSystemId: fileSystem.fileSystemId,
+                transitEncryption: 'ENABLED',
+                authorizationConfig: {
+                    accessPointId: accessPoint.accessPointId,
+                    iam: 'ENABLED'
+                }
+            }
+        });
+
+        const containerDefinition = taskDefinition.addContainer('jenkins', {
             image: ecs.ContainerImage.fromRegistry("jenkins/jenkins:lts"),
             logging: ecs.LogDrivers.awsLogs({streamPrefix: 'jenkins'}),
             portMappings: [{
                 containerPort: 8080
             }]
+        });
+        containerDefinition.addMountPoints({
+            containerPath: '/var/jenkins_home',
+            sourceVolume: 'jenkins-home',
+            readOnly: false
         });
 
         const service = new ecs.FargateService(this, 'JenkinsService', {
@@ -41,6 +78,7 @@ export class JenkinsMasterStack extends cdk.Stack {
             minHealthyPercent: 0,
             healthCheckGracePeriod: Duration.minutes(5)
         });
+        service.connections.allowTo(fileSystem, Port.tcp(2049));
 
         let certificateArn = this.node.tryGetContext('certificateArn');
         if (certificateArn) {
