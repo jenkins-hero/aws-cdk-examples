@@ -3,7 +3,7 @@
 Sample Jenkins implementation in CDK, including:
 
 * VPC, subnets, load balancer, and other network setup
-* Jenkins deployment to Elastic Container Service Fargate
+* Jenkins deployment to ECS using serverless Fargate containers
 * single master, with automatic failover to 2nd availability zone
 * persistent storage with EFS
 * secure access over HTTPS, with optional registration into a hosted zone
