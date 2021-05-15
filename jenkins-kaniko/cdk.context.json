@@ -1,0 +1,11 @@
+{
+  "availability-zones:account=299404798587:region=eu-west-1": [
+    "eu-west-1a",
+    "eu-west-1b",
+    "eu-west-1c"
+  ],
+  "hosted-zone:account=299404798587:domainName=tomgregory.com:region=eu-west-1": {
+    "Id": "/hostedzone/Z06426551JRM5G4EGPV2L",
+    "Name": "tomgregory.com."
+  }
+}

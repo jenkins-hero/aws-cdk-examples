@@ -10,6 +10,10 @@ Sample Jenkins implementation in CDK, including:
 
 ## Deploying
 
+Install required npm packages:
+
+`npm install`
+
 Ensure you have the following environment variables set:
 * `CDK_DEFAULT_ACCOUNT=<your-aws-account-id>`
 * `CDK_DEFAULT_REGION=<aws-region>`
