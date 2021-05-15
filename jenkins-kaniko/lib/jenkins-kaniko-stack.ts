@@ -3,6 +3,8 @@ import {Duration, RemovalPolicy} from '@aws-cdk/core';
 import * as ecs from '@aws-cdk/aws-ecs';
 import * as ecr from '@aws-cdk/aws-ecr';
 import * as ec2 from '@aws-cdk/aws-ec2';
+import {Port} from '@aws-cdk/aws-ec2';
+import * as efs from '@aws-cdk/aws-efs';
 import * as elbv2 from '@aws-cdk/aws-elasticloadbalancingv2';
 import * as route53 from '@aws-cdk/aws-route53';
 import {HostedZone} from '@aws-cdk/aws-route53';
@@ -24,28 +26,82 @@ export class JenkinsKanikoStack extends cdk.Stack {
             clusterName: 'jenkins-cluster'
         });
 
-        const taskDefinition = new ecs.FargateTaskDefinition(this, 'jenkins-task-definition', {
-            memoryLimitMiB: 1024,
-            cpu: 512,
-            family: 'jenkins'
+        const jenkinsFileSystem = new efs.FileSystem(this, 'JenkinsFileSystem', {
+            vpc: vpc,
+            removalPolicy: RemovalPolicy.DESTROY
         });
 
-        taskDefinition.addContainer('jenkins', {
-            image: ecs.ContainerImage.fromRegistry("jenkins/jenkins:lts"),
+        const jenkinsAccessPoint = jenkinsFileSystem.addAccessPoint('AccessPoint', {
+            path: '/jenkins-home',
+            posixUser: {
+                uid: '1000',
+                gid: '1000',
+            },
+            createAcl: {
+                ownerGid: '1000',
+                ownerUid: '1000',
+                permissions: '755'
+            }
+        });
+
+        const jenkinsTaskRole = new Role(this, 'JenkinsTaskRole', {
+            assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com')
+        });
+
+        jenkinsTaskRole.addToPolicy(new PolicyStatement({
+            resources: ['*'],
+            actions: [
+                'ecs:RunTask'
+            ],
+        }));
+        jenkinsTaskRole.addToPolicy(new PolicyStatement({
+            resources: ['*'],
+            actions: [
+                'iam:PassRole'
+            ],
+        }));
+
+        const jenkinsTaskDefinition = new ecs.FargateTaskDefinition(this, 'jenkins-task-definition', {
+            memoryLimitMiB: 1024,
+            cpu: 512,
+            family: 'jenkins',
+            taskRole: jenkinsTaskRole
+        });
+
+        jenkinsTaskDefinition.addVolume({
+            name: 'jenkins-home',
+            efsVolumeConfiguration: {
+                fileSystemId: jenkinsFileSystem.fileSystemId,
+                transitEncryption: 'ENABLED',
+                authorizationConfig: {
+                    accessPointId: jenkinsAccessPoint.accessPointId,
+                    iam: 'ENABLED'
+                }
+            }
+        });
+
+        const jenkinsContainerDefinition = jenkinsTaskDefinition.addContainer('jenkins', {
+            image: ecs.ContainerImage.fromRegistry("tkgregory/jenkins-with-aws:latest"),
             logging: ecs.LogDrivers.awsLogs({streamPrefix: 'jenkins'}),
             portMappings: [{
                 containerPort: 8080
             }]
         });
+        jenkinsContainerDefinition.addMountPoints({
+            containerPath: '/var/jenkins_home',
+            sourceVolume: 'jenkins-home',
+            readOnly: false
+        });
 
-        const service = new ecs.FargateService(this, 'JenkinsService', {
+        const jenkinsService = new ecs.FargateService(this, 'JenkinsService', {
             cluster,
-            taskDefinition,
+            taskDefinition: jenkinsTaskDefinition,
             desiredCount: 1,
             maxHealthyPercent: 100,
             minHealthyPercent: 0,
             healthCheckGracePeriod: Duration.minutes(5)
         });
+        jenkinsService.connections.allowTo(jenkinsFileSystem, Port.tcp(2049));
 
         let certificateArn = this.node.tryGetContext('certificateArn');
         if (certificateArn) {
@@ -58,7 +114,7 @@ export class JenkinsKanikoStack extends cdk.Stack {
             });
             listener.addTargets('JenkinsTarget', {
                 port: 8080,
-                targets: [service],
+                targets: [jenkinsService],
                 deregistrationDelay: Duration.seconds(10),
                 healthCheck: {
                     path: '/login'
@@ -84,12 +140,12 @@ export class JenkinsKanikoStack extends cdk.Stack {
             removalPolicy: RemovalPolicy.DESTROY
         });
 
-        const image = new DockerImageAsset(this, 'KanikoBuilderDockerImage', {
+        const kanikoBuilderDockerImage = new DockerImageAsset(this, 'KanikoBuilderDockerImage', {
             directory: path.join(__dirname, 'kaniko-builder'),
         });
 
         new ecrDeploy.ECRDeployment(this, 'DeployKanikoBuilderDockerImage', {
-            src: new ecrDeploy.DockerImageName(image.imageUri),
+            src: new ecrDeploy.DockerImageName(kanikoBuilderDockerImage.imageUri),
             dest: new ecrDeploy.DockerImageName(`${kanikoBuilderRepository.repositoryUri}:latest`)
         });
 
