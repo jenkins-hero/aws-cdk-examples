@@ -26,6 +26,79 @@ export class JenkinsKanikoStack extends cdk.Stack {
             clusterName: 'jenkins-cluster'
         });
 
+        const kanikoBuilderRepository = new ecr.Repository(this, 'KanikoBuilderRepository', {
+            repositoryName: 'kaniko-builder',
+            removalPolicy: RemovalPolicy.DESTROY
+        });
+
+        const kanikoBuilderDockerImage = new DockerImageAsset(this, 'KanikoBuilderDockerImage', {
+            directory: path.join(__dirname, 'kaniko-builder'),
+        });
+
+        new ecrDeploy.ECRDeployment(this, 'DeployKanikoBuilderDockerImage', {
+            src: new ecrDeploy.DockerImageName(kanikoBuilderDockerImage.imageUri),
+            dest: new ecrDeploy.DockerImageName(`${kanikoBuilderRepository.repositoryUri}:latest`)
+        });
+
+        const kanikoDemoRepository = new ecr.Repository(this, 'KanikoDemoRepository', {
+            repositoryName: 'kaniko-demo',
+            removalPolicy: RemovalPolicy.DESTROY
+        });
+
+        const kanikoTaskRole = new Role(this, 'KanikoECSRole', {
+            assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com')
+        });
+
+        kanikoTaskRole.addToPolicy(new PolicyStatement({
+            resources: ['*'],
+            actions: [
+                'ecr:GetAuthorizationToken',
+                'ecr:InitiateLayerUpload',
+                'ecr:UploadLayerPart',
+                'ecr:CompleteLayerUpload',
+                'ecr:PutImage',
+                'ecr:BatchGetImage',
+                'ecr:BatchCheckLayerAvailability'
+            ],
+        }));
+
+        const kanikoTaskDefinition = new ecs.FargateTaskDefinition(this, 'kaniko-task-definition', {
+            memoryLimitMiB: 1024,
+            cpu: 512,
+            family: 'kaniko-builder',
+            taskRole: kanikoTaskRole
+        });
+        kanikoTaskDefinition.addToExecutionRolePolicy(new PolicyStatement({
+            resources: ['*'],
+            actions: [
+                'ecr:GetAuthorizationToken',
+                'ecr:BatchCheckLayerAvailability',
+                'ecr:GetDownloadUrlForLayer',
+                'ecr:BatchGetImage'
+            ]
+        }));
+
+        kanikoTaskDefinition.addContainer('kaniko', {
+            image: ecs.ContainerImage.fromRegistry(`${kanikoBuilderRepository.repositoryUri}:latest`),
+            logging: ecs.LogDrivers.awsLogs({streamPrefix: 'kaniko'}),
+            command: [
+                '--context', 'git://github.com/ollypom/mysfits.git',
+                '--context-sub-path', './api',
+                '--dockerfile', 'Dockerfile.v3',
+                '--destination', `${kanikoDemoRepository.repositoryUri}:latest`,
+                '--force'
+            ]
+        });
+
+        const kanikoSecurityGroup = new ec2.SecurityGroup(this, 'KanikoSecurityGroup', {
+            securityGroupName: 'kaniko-security-group',
+            vpc: vpc
+        });
+        new cdk.CfnOutput(this, 'KanikoSecurityGroupId', {value: kanikoSecurityGroup.securityGroupId});
+        new cdk.CfnOutput(this, 'PublicSubnetId', {value: vpc.publicSubnets[0].subnetId});
+        new cdk.CfnOutput(this, 'PrivateSubnetId', {value: vpc.privateSubnets[0].subnetId});
+
+
         const jenkinsFileSystem = new efs.FileSystem(this, 'JenkinsFileSystem', {
             vpc: vpc,
             removalPolicy: RemovalPolicy.DESTROY
@@ -49,13 +122,17 @@ export class JenkinsKanikoStack extends cdk.Stack {
         });
 
         jenkinsTaskRole.addToPolicy(new PolicyStatement({
-            resources: ['*'],
+            resources: [kanikoTaskDefinition.taskDefinitionArn],
             actions: [
                 'ecs:RunTask'
             ],
         }));
+
         jenkinsTaskRole.addToPolicy(new PolicyStatement({
-            resources: ['*'],
+            resources: [
+                kanikoTaskRole.roleArn,
+                kanikoTaskDefinition.obtainExecutionRole().roleArn
+            ],
             actions: [
                 'iam:PassRole'
             ],
@@ -134,77 +211,5 @@ export class JenkinsKanikoStack extends cdk.Stack {
                 });
             }
         }
-
-        const kanikoBuilderRepository = new ecr.Repository(this, 'KanikoBuilderRepository', {
-            repositoryName: 'kaniko-builder',
-            removalPolicy: RemovalPolicy.DESTROY
-        });
-
-        const kanikoBuilderDockerImage = new DockerImageAsset(this, 'KanikoBuilderDockerImage', {
-            directory: path.join(__dirname, 'kaniko-builder'),
-        });
-
-        new ecrDeploy.ECRDeployment(this, 'DeployKanikoBuilderDockerImage', {
-            src: new ecrDeploy.DockerImageName(kanikoBuilderDockerImage.imageUri),
-            dest: new ecrDeploy.DockerImageName(`${kanikoBuilderRepository.repositoryUri}:latest`)
-        });
-
-        const kanikoDemoRepository = new ecr.Repository(this, 'KanikoDemoRepository', {
-            repositoryName: 'kaniko-demo',
-            removalPolicy: RemovalPolicy.DESTROY
-        });
-
-        const kanikoRole = new Role(this, 'KanikoECSRole', {
-            assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com')
-        });
-
-        kanikoRole.addToPolicy(new PolicyStatement({
-            resources: ['*'],
-            actions: [
-                'ecr:GetAuthorizationToken',
-                'ecr:InitiateLayerUpload',
-                'ecr:UploadLayerPart',
-                'ecr:CompleteLayerUpload',
-                'ecr:PutImage',
-                'ecr:BatchGetImage',
-                'ecr:BatchCheckLayerAvailability'
-            ],
-        }));
-
-        const kanikoTaskDefinition = new ecs.FargateTaskDefinition(this, 'kaniko-task-definition', {
-            memoryLimitMiB: 1024,
-            cpu: 512,
-            family: 'kaniko-builder',
-            taskRole: kanikoRole
-        });
-        kanikoTaskDefinition.addToExecutionRolePolicy(new PolicyStatement({
-            resources: ['*'],
-            actions: [
-                'ecr:GetAuthorizationToken',
-                'ecr:BatchCheckLayerAvailability',
-                'ecr:GetDownloadUrlForLayer',
-                'ecr:BatchGetImage'
-            ]
-        }));
-
-        kanikoTaskDefinition.addContainer('kaniko', {
-            image: ecs.ContainerImage.fromRegistry(`${kanikoBuilderRepository.repositoryUri}:latest`),
-            logging: ecs.LogDrivers.awsLogs({streamPrefix: 'kaniko'}),
-            command: [
-                '--context', 'git://github.com/ollypom/mysfits.git',
-                '--context-sub-path', './api',
-                '--dockerfile', 'Dockerfile.v3',
-                '--destination', `${kanikoDemoRepository.repositoryUri}:latest`,
-                '--force'
-            ]
-        });
-
-        const kanikoSecurityGroup = new ec2.SecurityGroup(this, 'KanikoSecurityGroup', {
-            securityGroupName: 'kaniko-security-group',
-            vpc: vpc
-        });
-        new cdk.CfnOutput(this, 'KanikoSecurityGroupId', {value: kanikoSecurityGroup.securityGroupId});
-        new cdk.CfnOutput(this, 'PublicSubnetId', {value: vpc.publicSubnets[0].subnetId});
-        new cdk.CfnOutput(this, 'PrivateSubnetId', {value: vpc.privateSubnets[0].subnetId});
     }
 }
