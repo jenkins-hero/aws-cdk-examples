@@ -3,6 +3,7 @@ import {Duration, RemovalPolicy} from '@aws-cdk/core';
 import * as ecs from '@aws-cdk/aws-ecs';
 import * as ecr from '@aws-cdk/aws-ecr';
 import * as ec2 from '@aws-cdk/aws-ec2';
+import * as s3 from '@aws-cdk/aws-s3';
 import {Port} from '@aws-cdk/aws-ec2';
 import * as efs from '@aws-cdk/aws-efs';
 import * as elbv2 from '@aws-cdk/aws-elasticloadbalancingv2';
@@ -24,6 +25,10 @@ export class JenkinsKanikoStack extends cdk.Stack {
         const cluster = new ecs.Cluster(this, 'jenkins-cluster', {
             vpc,
             clusterName: 'jenkins-cluster'
+        });
+
+        const kanikoBuildContextBucket = new s3.Bucket(this, 'KanikoBuildContextBucket', {
+            bucketName: 'kaniko-build-context'
         });
 
         const kanikoBuilderRepository = new ecr.Repository(this, 'KanikoBuilderRepository', {
@@ -59,6 +64,12 @@ export class JenkinsKanikoStack extends cdk.Stack {
                 'ecr:PutImage',
                 'ecr:BatchGetImage',
                 'ecr:BatchCheckLayerAvailability'
+            ],
+        }));
+        kanikoTaskRole.addToPolicy(new PolicyStatement({
+            resources: [`${kanikoBuildContextBucket.bucketArn}/*`],
+            actions: [
+                's3:GetObject'
             ],
         }));
 
@@ -120,11 +131,23 @@ export class JenkinsKanikoStack extends cdk.Stack {
         const jenkinsTaskRole = new Role(this, 'JenkinsTaskRole', {
             assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com')
         });
+        jenkinsTaskRole.addToPolicy(new PolicyStatement({
+            resources: [`${kanikoBuildContextBucket.bucketArn}/*`],
+            actions: [
+                's3:PutObject'
+            ],
+        }));
 
         jenkinsTaskRole.addToPolicy(new PolicyStatement({
             resources: [kanikoTaskDefinition.taskDefinitionArn],
             actions: [
                 'ecs:RunTask'
+            ],
+        }));
+        jenkinsTaskRole.addToPolicy(new PolicyStatement({
+            resources: ['*'],
+            actions: [
+                'ecs:DescribeTasks'
             ],
         }));
 
@@ -139,8 +162,8 @@ export class JenkinsKanikoStack extends cdk.Stack {
         }));
 
         const jenkinsTaskDefinition = new ecs.FargateTaskDefinition(this, 'jenkins-task-definition', {
-            memoryLimitMiB: 1024,
-            cpu: 512,
+            memoryLimitMiB: 3072,
+            cpu: 1024,
             family: 'jenkins',
             taskRole: jenkinsTaskRole
         });
@@ -162,7 +185,13 @@ export class JenkinsKanikoStack extends cdk.Stack {
             logging: ecs.LogDrivers.awsLogs({streamPrefix: 'jenkins'}),
             portMappings: [{
                 containerPort: 8080
-            }]
+            }],
+            environment: {
+                KANIKO_CLUSTER_NAME: cluster.clusterName,
+                KANIKO_SUBNET_ID: vpc.privateSubnets[0].subnetId,
+                KANIKO_SECURITY_GROUP_ID: kanikoSecurityGroup.securityGroupId
+            }
+
         });
         jenkinsContainerDefinition.addMountPoints({
             containerPath: '/var/jenkins_home',
