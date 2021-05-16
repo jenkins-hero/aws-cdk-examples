@@ -28,7 +28,8 @@ export class JenkinsKanikoStack extends cdk.Stack {
         });
 
         const kanikoBuildContextBucket = new s3.Bucket(this, 'KanikoBuildContextBucket', {
-            bucketName: 'kaniko-build-context'
+            bucketName: 'kaniko-build-context',
+            versioned: true
         });
 
         const kanikoBuilderRepository = new ecr.Repository(this, 'KanikoBuilderRepository', {
@@ -93,9 +94,9 @@ export class JenkinsKanikoStack extends cdk.Stack {
             image: ecs.ContainerImage.fromRegistry(`${kanikoBuilderRepository.repositoryUri}:latest`),
             logging: ecs.LogDrivers.awsLogs({streamPrefix: 'kaniko'}),
             command: [
-                '--context', 'git://github.com/ollypom/mysfits.git',
-                '--context-sub-path', './api',
-                '--dockerfile', 'Dockerfile.v3',
+                '--context', `s3://${kanikoBuildContextBucket.bucketName}/context.tar.gz`,
+                '--context-sub-path', './build/docker',
+                '--build-arg', 'JAR_FILE=spring-boot-api-example-0.1.0-SNAPSHOT.jar',
                 '--destination', `${kanikoDemoRepository.repositoryUri}:latest`,
                 '--force'
             ]
@@ -147,7 +148,8 @@ export class JenkinsKanikoStack extends cdk.Stack {
         jenkinsTaskRole.addToPolicy(new PolicyStatement({
             resources: ['*'],
             actions: [
-                'ecs:DescribeTasks'
+                'ecs:DescribeTasks',
+                'ecs:ListTaskDefinitions'
             ],
         }));
 
@@ -189,7 +191,8 @@ export class JenkinsKanikoStack extends cdk.Stack {
             environment: {
                 KANIKO_CLUSTER_NAME: cluster.clusterName,
                 KANIKO_SUBNET_ID: vpc.privateSubnets[0].subnetId,
-                KANIKO_SECURITY_GROUP_ID: kanikoSecurityGroup.securityGroupId
+                KANIKO_SECURITY_GROUP_ID: kanikoSecurityGroup.securityGroupId,
+                KANIKO_TASK_FAMILY_PREFIX: kanikoTaskDefinition.family
             }
 
         });
