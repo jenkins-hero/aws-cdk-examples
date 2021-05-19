@@ -27,7 +27,8 @@ export class JenkinsKanikoStack extends cdk.Stack {
         const kanikoBuildContextBucket = new s3.Bucket(this, 'KanikoBuildContextBucket', {
             bucketName: 'kaniko-build-context',
             versioned: true,
-            removalPolicy: RemovalPolicy.DESTROY
+            removalPolicy: RemovalPolicy.DESTROY,
+            autoDeleteObjects: true
         });
 
         const kanikoDemoRepository = new ecr.Repository(this, 'KanikoDemoRepository', {
