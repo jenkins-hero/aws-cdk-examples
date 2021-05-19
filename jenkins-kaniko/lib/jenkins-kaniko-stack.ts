@@ -29,21 +29,8 @@ export class JenkinsKanikoStack extends cdk.Stack {
 
         const kanikoBuildContextBucket = new s3.Bucket(this, 'KanikoBuildContextBucket', {
             bucketName: 'kaniko-build-context',
-            versioned: true
-        });
-
-        const kanikoBuilderRepository = new ecr.Repository(this, 'KanikoBuilderRepository', {
-            repositoryName: 'kaniko-builder',
+            versioned: true,
             removalPolicy: RemovalPolicy.DESTROY
-        });
-
-        const kanikoBuilderDockerImage = new DockerImageAsset(this, 'KanikoBuilderDockerImage', {
-            directory: path.join(__dirname, 'kaniko-builder'),
-        });
-
-        new ecrDeploy.ECRDeployment(this, 'DeployKanikoBuilderDockerImage', {
-            src: new ecrDeploy.DockerImageName(kanikoBuilderDockerImage.imageUri),
-            dest: new ecrDeploy.DockerImageName(`${kanikoBuilderRepository.repositoryUri}:latest`)
         });
 
         const kanikoDemoRepository = new ecr.Repository(this, 'KanikoDemoRepository', {
@@ -91,15 +78,8 @@ export class JenkinsKanikoStack extends cdk.Stack {
         }));
 
         kanikoTaskDefinition.addContainer('kaniko', {
-            image: ecs.ContainerImage.fromRegistry(`${kanikoBuilderRepository.repositoryUri}:latest`),
-            logging: ecs.LogDrivers.awsLogs({streamPrefix: 'kaniko'}),
-            command: [
-                '--context', `s3://${kanikoBuildContextBucket.bucketName}/context.tar.gz`,
-                '--context-sub-path', './build/docker',
-                '--build-arg', 'JAR_FILE=spring-boot-api-example-0.1.0-SNAPSHOT.jar',
-                '--destination', `${kanikoDemoRepository.repositoryUri}:latest`,
-                '--force'
-            ]
+            image: ecs.ContainerImage.fromRegistry(`tkgregory/kaniko-for-ecr:latest`),
+            logging: ecs.LogDrivers.awsLogs({streamPrefix: 'kaniko'})
         });
 
         const kanikoSecurityGroup = new ec2.SecurityGroup(this, 'KanikoSecurityGroup', {
@@ -183,7 +163,7 @@ export class JenkinsKanikoStack extends cdk.Stack {
         });
 
         const jenkinsContainerDefinition = jenkinsTaskDefinition.addContainer('jenkins', {
-            image: ecs.ContainerImage.fromRegistry("tkgregory/jenkins-with-aws:latest"),
+            image: ecs.ContainerImage.fromRegistry("tkgregory/jenkins-for-kaniko:latest"),
             logging: ecs.LogDrivers.awsLogs({streamPrefix: 'jenkins'}),
             portMappings: [{
                 containerPort: 8080
@@ -192,9 +172,10 @@ export class JenkinsKanikoStack extends cdk.Stack {
                 KANIKO_CLUSTER_NAME: cluster.clusterName,
                 KANIKO_SUBNET_ID: vpc.privateSubnets[0].subnetId,
                 KANIKO_SECURITY_GROUP_ID: kanikoSecurityGroup.securityGroupId,
-                KANIKO_TASK_FAMILY_PREFIX: kanikoTaskDefinition.family
+                KANIKO_TASK_FAMILY_PREFIX: kanikoTaskDefinition.family,
+                KANIKO_BUILD_CONTEXT_BUCKET_NAME: kanikoBuildContextBucket.bucketName,
+                KANIKO_REPOSITORY_URI: kanikoDemoRepository.repositoryUri
             }
-
         });
         jenkinsContainerDefinition.addMountPoints({
             containerPath: '/var/jenkins_home',
