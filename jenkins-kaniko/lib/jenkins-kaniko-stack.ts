@@ -9,9 +9,6 @@ import * as efs from '@aws-cdk/aws-efs';
 import * as elbv2 from '@aws-cdk/aws-elasticloadbalancingv2';
 import * as route53 from '@aws-cdk/aws-route53';
 import {HostedZone} from '@aws-cdk/aws-route53';
-import * as ecrDeploy from 'cdk-ecr-deployment'
-import * as path from 'path';
-import {DockerImageAsset} from '@aws-cdk/aws-ecr-assets';
 import {PolicyStatement, Role, ServicePrincipal} from "@aws-cdk/aws-iam";
 
 export class JenkinsKanikoStack extends cdk.Stack {
