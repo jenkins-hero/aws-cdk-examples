@@ -33,6 +33,10 @@ Then run this command:
 
 `cdk deploy --context certificateArn=<certificate-arn> --context hostedZoneName=<hosted-zone-name>`
 
+Once your stack has been created, you can access Jenkins by entering the admin password from the ECS task logs.
+Choose to not install any plugins, as the required plugins are preconfigured. Create a new user, then on the main 
+Jenkins page you can run the provided *kaniko-example* job to see Kaniko in action.
+
 ## Useful commands
 
 * `npm run build`   compile typescript to js
