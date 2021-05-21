@@ -65,15 +65,6 @@ export class JenkinsKanikoStack extends cdk.Stack {
             family: 'kaniko-builder',
             taskRole: kanikoTaskRole
         });
-        kanikoTaskDefinition.addToExecutionRolePolicy(new PolicyStatement({
-            resources: ['*'],
-            actions: [
-                'ecr:GetAuthorizationToken',
-                'ecr:BatchCheckLayerAvailability',
-                'ecr:GetDownloadUrlForLayer',
-                'ecr:BatchGetImage'
-            ]
-        }));
 
         kanikoTaskDefinition.addContainer('kaniko', {
             image: ecs.ContainerImage.fromRegistry(`tkgregory/kaniko-for-ecr:latest`),
