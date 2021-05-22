@@ -1,6 +1,8 @@
 # Jenkins for Kaniko
 
-Sample Jenkins implementation in CDK, including all the AWS resources required to run Kaniko.
+Sample Jenkins implementation in CDK, demonstrating concepts from the article *[Using Jenkins and Kaniko to build Docker images in AWS](https://tomgregory.com/using-jenkins-and-kaniko-to-build-docker-images-in-aws/)*.
+
+Includes all the AWS resources required to run Kaniko:
 
 * Kaniko build context S3 bucket
 * Kaniko task definition
@@ -33,14 +35,15 @@ Then run this command:
 
 `cdk deploy --context certificateArn=<certificate-arn> --context hostedZoneName=<hosted-zone-name>`
 
-(you may be prompted to run a `cdk bootstrap` command)
+(you may be prompted to first run a `cdk bootstrap` command)
 
 Once your stack has been created, you can:
 
 1. access Jenkins by entering the admin password from the ECS task logs
-1. in the setup wizard choose not to install any plugins, as the required plugins are preconfigured 
+1. in the setup wizard choose not to install any plugins, as the required plugins are already installed 
 1. create a new user
-1. on the main Jenkins page you can run the provided *kaniko-example* job to see Kaniko in action
+1. on the main Jenkins page you can run the provided *kaniko-example* job to see Kaniko in action 
+   (this may take around 10 minutes to complete).
 
 ## Cleanup
 
@@ -48,4 +51,5 @@ Don't forget to remove your deployment to avoid unnecessary costs.
 
 1. within the AWS console remove any images from the *kaniko-demo* ECR repository 
 1. delete the CloudFormation stack from within the AWS console or run this command:
+
 `cdk destroy --context certificateArn=<certificate-arn> --context hostedZoneName=<hosted-zone-name>`
