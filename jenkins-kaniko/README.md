@@ -33,15 +33,16 @@ Then run this command:
 
 `cdk deploy --context certificateArn=<certificate-arn> --context hostedZoneName=<hosted-zone-name>`
 
-Once your stack has been created, you can access Jenkins by entering the admin password from the ECS task logs.
-Choose to not install any plugins, as the required plugins are preconfigured. Create a new user, then on the main 
-Jenkins page you can run the provided *kaniko-example* job to see Kaniko in action.
+Once your stack has been created, you can:
 
-## Useful commands
+1. access Jenkins by entering the admin password from the ECS task logs
+1. in the setup wizard choose not to install any plugins, as the required plugins are preconfigured 
+1. create a new user
+1. on the main Jenkins page you can run the provided *kaniko-example* job to see Kaniko in action
 
-* `npm run build`   compile typescript to js
-* `npm run watch`   watch for changes and compile
-* `npm run test`    perform the jest unit tests
-* `cdk deploy`      deploy this stack to your default AWS account/region
-* `cdk diff`        compare deployed stack with current state
-* `cdk synth`       emits the synthesized CloudFormation template
+## Cleanup
+
+Don't forget to remove your deployment to avoid unnecessary costs. You can do this by deleting the CloudFormation stack
+from within the AWS console or with this command:
+
+`cdk destroy --context certificateArn=<certificate-arn> --context hostedZoneName=<hosted-zone-name>`
