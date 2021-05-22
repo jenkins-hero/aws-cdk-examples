@@ -33,6 +33,8 @@ Then run this command:
 
 `cdk deploy --context certificateArn=<certificate-arn> --context hostedZoneName=<hosted-zone-name>`
 
+(you may be prompted to run a `cdk bootstrap` command)
+
 Once your stack has been created, you can:
 
 1. access Jenkins by entering the admin password from the ECS task logs
