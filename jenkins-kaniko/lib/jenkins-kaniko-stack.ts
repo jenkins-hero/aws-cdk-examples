@@ -75,10 +75,6 @@ export class JenkinsKanikoStack extends cdk.Stack {
             securityGroupName: 'kaniko-security-group',
             vpc: vpc
         });
-        new cdk.CfnOutput(this, 'KanikoSecurityGroupId', {value: kanikoSecurityGroup.securityGroupId});
-        new cdk.CfnOutput(this, 'PublicSubnetId', {value: vpc.publicSubnets[0].subnetId});
-        new cdk.CfnOutput(this, 'PrivateSubnetId', {value: vpc.privateSubnets[0].subnetId});
-
 
         const jenkinsFileSystem = new efs.FileSystem(this, 'JenkinsFileSystem', {
             vpc: vpc,

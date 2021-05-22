@@ -44,7 +44,8 @@ Once your stack has been created, you can:
 
 ## Cleanup
 
-Don't forget to remove your deployment to avoid unnecessary costs. You can do this by deleting the CloudFormation stack
-from within the AWS console or with this command:
+Don't forget to remove your deployment to avoid unnecessary costs. 
 
+1. within the AWS console remove any images from the *kaniko-demo* ECR repository 
+1. delete the CloudFormation stack from within the AWS console or run this command:
 `cdk destroy --context certificateArn=<certificate-arn> --context hostedZoneName=<hosted-zone-name>`
