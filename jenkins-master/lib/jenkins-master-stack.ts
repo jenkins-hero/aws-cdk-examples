@@ -80,8 +80,19 @@ export class JenkinsMasterStack extends cdk.Stack {
         });
         service.connections.allowTo(fileSystem, Port.tcp(2049));
 
-        let certificateArn = this.node.tryGetContext('certificateArn');
-        if (certificateArn) {
+        const hostedZoneName = this.node.tryGetContext('hostedZoneName');
+        if (hostedZoneName) {
+            const hostedZone = route53.HostedZone.fromLookup(this, 'baseZone', {
+                domainName: hostedZoneName
+            });
+
+            const subdomain = `jenkins.${hostedZoneName}`;
+            const myCertificate = new acm.DnsValidatedCertificate(this, 'mySiteCert', {
+                domainName: subdomain,
+                hostedZone: hostedZone,
+            });
+            const certificateArn = myCertificate.certificateArn
+        
             const loadBalancer = new elbv2.ApplicationLoadBalancer(this, 'LoadBalancer', {vpc, internetFacing: true});
             new cdk.CfnOutput(this, 'LoadBalancerDNSName', {value: loadBalancer.loadBalancerDnsName});
 
@@ -98,18 +109,13 @@ export class JenkinsMasterStack extends cdk.Stack {
                 }
             });
 
-            const hostedZoneName = this.node.tryGetContext('hostedZoneName')
-            if (hostedZoneName) {
-                const hostedZone = HostedZone.fromLookup(this, 'HostedZone', {
-                    domainName: hostedZoneName
-                });
-                new route53.CnameRecord(this, 'CnameRecord', {
-                    zone: hostedZone,
-                    recordName: 'jenkins',
-                    domainName: loadBalancer.loadBalancerDnsName,
-                    ttl: Duration.minutes(1)
-                });
-            }
+            new route53.CnameRecord(this, 'CnameRecord', {
+                zone: hostedZone,
+                recordName: 'jenkins',
+                domainName: loadBalancer.loadBalancerDnsName,
+                ttl: Duration.minutes(1)
+            });
+            
         }
     }
 }
