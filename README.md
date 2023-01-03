@@ -5,3 +5,7 @@ Sample deployment projects using AWS CDK.
 ## [jenkins-master](jenkins-master)
 
 A Jenkins master deployment into AWS ECS.
+
+## [jenkins-kaniko](jenkins-kaniko)
+
+A Jenkins master deployment to build Docker images with Kaniko.
