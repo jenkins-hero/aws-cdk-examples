@@ -5,13 +5,12 @@ on:
   pull_request:
     branches: [ master ]
 jobs:
-  test:
   build:
     steps:
-    - uses: actions/checkout@v3
-    - name: Build jenkins-master
-      run: npm ci
-      working-directory: jenkins-master
-    - name: Build jenkins-kaniko
-      run: npm ci
-      working-directory: jenkins-kaniko
+      - uses: actions/checkout@v3
+      - name: Build jenkins-master
+        run: npm ci
+        working-directory: jenkins-master
+      - name: Build jenkins-kaniko
+        run: npm ci
+        working-directory: jenkins-kaniko
