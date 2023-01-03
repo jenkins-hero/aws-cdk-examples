@@ -1,4 +1,4 @@
-name: AWS CDK Examples
+name: CI
 on:
   push:
     branches: [ master ]
@@ -9,9 +9,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Build jenkins-master
+      - name: Install CDK
+        run: npm i -g aws-cdk
+      - name: Install jenkins-master
         run: npm ci
         working-directory: jenkins-master
-      - name: Build jenkins-kaniko
+      - name: Test jenkins-master
+        run: cdk synth
+        working-directory: jenkins-master
+      - name: Install jenkins-kaniko
         run: npm ci
+        working-directory: jenkins-kaniko
+      - name: Test jenkins-kaniko
+        run: cdk synth
         working-directory: jenkins-kaniko
