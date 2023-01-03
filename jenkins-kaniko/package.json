@@ -24,7 +24,7 @@
     "@aws-cdk/aws-ecr-assets": "^1.104.0",
     "@aws-cdk/aws-ecs": "^1.104.0",
     "@aws-cdk/aws-efs": "^1.186.1",
-    "@aws-cdk/aws-elasticloadbalancingv2": "^1.104.0",
+    "@aws-cdk/aws-elasticloadbalancingv2": "^1.186.1",
     "@aws-cdk/aws-iam": "^1.104.0",
     "@aws-cdk/aws-route53": "^1.104.0",
     "@aws-cdk/aws-s3": "^1.104.0",
