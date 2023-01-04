@@ -24,7 +24,7 @@
     "@aws-cdk/aws-ec2": "^1.186.1",
     "@aws-cdk/aws-ecs": "^1.186.1",
     "@aws-cdk/aws-efs": "^1.186.1",
-    "@aws-cdk/aws-elasticloadbalancingv2": "^1.186.1",
+    "@aws-cdk/aws-elasticloadbalancingv2": "^1.187.0",
     "@aws-cdk/aws-route53": "^1.186.1",
     "@aws-cdk/aws-secretsmanager": "^1.186.1",
     "@aws-cdk/core": "1.186.1",
