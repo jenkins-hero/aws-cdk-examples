@@ -3,12 +3,12 @@ updates:
   - package-ecosystem: "npm"
     directory: "/jenkins-master"
     schedule:
-      interval: "daily"
+      interval: "monthly"
   - package-ecosystem: "npm"
     directory: "/jenkins-kaniko"
     schedule:
-      interval: "daily"
+      interval: "monthly"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "monthly"
