@@ -26,7 +26,7 @@
     "@aws-cdk/aws-efs": "^1.187.0",
     "@aws-cdk/aws-elasticloadbalancingv2": "^1.187.0",
     "@aws-cdk/aws-route53": "^1.187.0",
-    "@aws-cdk/aws-secretsmanager": "^1.187.0",
+    "@aws-cdk/aws-secretsmanager": "^1.191.0",
     "@aws-cdk/core": "1.187.0",
     "source-map-support": "^0.5.21"
   }
