@@ -23,7 +23,7 @@
   "dependencies": {
     "@aws-cdk/aws-ec2": "^1.187.0",
     "@aws-cdk/aws-ecs": "^1.187.0",
-    "@aws-cdk/aws-efs": "^1.187.0",
+    "@aws-cdk/aws-efs": "^1.200.0",
     "@aws-cdk/aws-elasticloadbalancingv2": "^1.187.0",
     "@aws-cdk/aws-route53": "^1.187.0",
     "@aws-cdk/aws-secretsmanager": "^1.187.0",
